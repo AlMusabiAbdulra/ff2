@@ -1,70 +1,76 @@
-import { youtubedl, youtubedlv2 } from '@bochilteam/scraper'
-import yts from 'yt-search'
+.gps اغنيه|import ytdl from 'ytdl-core';
+import yts from 'yt-search';
+import fs from 'fs';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import os from 'os';
+
+const streamPipeline = promisify(pipeline);
+
 var handler = async (m, { conn, command, text, usedPrefix }) => {
-  if (!text) throw `*تحميل الاغاني من يوتيوب*`
-  await m.reply(wait)
-  let search = await yts(text)
-  let vid = search.videos[Math.floor(Math.random() * search.videos.length)]
-  if (!search) throw '*⚠️ Vídeo no encontrado, prueba con otro título*'
-  let { title, thumbnail, timestamp, views, ago, url } = vid
+  if (!text) throw `مثال : \n ${usedPrefix}${command} midle of night`;
 
-  let captvid = `╭──── 〔 Y O U T U B E 〕 ─⬣
-⬡ T: ${title}
-⬡ D: ${timestamp}
-⬡ V: ${views}
-⬡ S: ${ago}
-⬡ E: ${url}
-╰────────⬣`
-  conn.sendButton(m.chat, `╭──── 〔 Y O U T U B E 〕 ─⬣
-⬡ T: ${title}
-⬡ D: ${timestamp}
-⬡ V: ${views}
-⬡ S: ${ago}
-⬡ E: ${url}
-╰────────⬣`, author.trim(), await( await conn.getFile(thumbnail)).data, ['📽 VIDEO', `${usedPrefix}getvid ${url} 360`], false, { quoted: m, 'document': { 'url':'https://wa.me/201146121794' },
-'mimetype': global.dpdf,
-'fileName': `𝕐𝕠𝕦𝕋𝕦𝕓𝕖 ℙ𝕝𝕒𝕪`,
-'fileLength': 666666666666666,
-'pageCount': 2023,contextInfo: { externalAdReply: { showAdAttribution: true,
-mediaType:  2,
-mediaUrl: `${url}`,
-title: `𝐆𝐎𝐍-𝐁𝐎𝐓 IS HERE ♥...`,
-body:author,
-sourceUrl: 'http://wa.me/201146121794', thumbnail: await ( await conn.getFile(thumbnail)).data
-  }
- } 
-})
+  let search = await yts(text);
+  let vid = search.videos[Math.floor(Math.random() * search.videos.length)];
+  if (!search) throw 'الفديو غير موجود, جرب عنوان ثاني';
+  let { title, thumbnail, timestamp, views, ago, url } = vid;
+  let wm = 'THE GON BOT';
 
-  //let buttons = [{ buttonText: { displayText: '📽VIDEO' }, buttonId: `${usedPrefix}ytv ${url} 360` }]
- //let msg = await conn.sendMessage(m.chat, { image: { url: thumbnail }, caption: captvid, footer: author, buttons }, { quoted: m })
+  let captvid = `💝  جاري التحميل ♥`;
 
-  const yt = await youtubedlv2(url).catch(async _ => await youtubedl(url))
-const link = await yt.audio['128kbps'].download()
-  let doc = { 
-  audio: 
-  { 
-    url: link 
-}, 
-mimetype: 'audio/mp4', fileName: `${title}`, contextInfo: { externalAdReply: { showAdAttribution: true,
-mediaType:  2,
-mediaUrl: url,
-title: title,
-body: author,
-sourceUrl: url,
-thumbnail: await(await conn.getFile(thumbnail)).data                                                                     
-                                                                                                                 }
-                       }
-  }
+  conn.sendMessage(m.chat, { image: { url: thumbnail }, caption: captvid, footer: author }, { quoted: m });
 
-  return conn.sendMessage(m.chat, doc, { quoted: m })
-  // return conn.sendMessage(m.chat, { document: { url: link }, mimetype: 'audio/mpeg', fileName: `${title}.mp3`}, { quoted: m})
-  // return await conn.sendFile(m.chat, link, title + '.mp3', '', m, false, { asDocument: true })
-}
-handler.help = ['play'].map(v => v + ' <pencarian>')
-handler.tags = ['downloader']
-handler.command = /^اغنيه$/i
 
-handler.exp = 0
-handler.limit = false
+  const audioStream = ytdl(url, {
+    filter: 'audioonly',
+    quality: 'highestaudio',
+  });
 
-export default handler
+  // Get the path to the system's temporary directory
+  const tmpDir = os.tmpdir();
+
+  // Create writable stream in the temporary directory
+  const writableStream = fs.createWriteStream(`${tmpDir}/${title}.mp3`);
+
+  // Start the download
+  await streamPipeline(audioStream, writableStream);
+
+  let doc = {
+    audio: {
+      url: `${tmpDir}/${title}.mp3`
+    },
+    mimetype: 'audio/mp4',
+    fileName: `${title}`,
+    contextInfo: {
+      externalAdReply: {
+        showAdAttribution: true,
+        mediaType: 2,
+        mediaUrl: url,
+        title: title,
+        body: wm,
+        sourceUrl: url,
+        thumbnail: await (await conn.getFile(thumbnail)).data
+      }
+    }
+  };
+
+  await conn.sendMessage(m.chat, doc, { quoted: m });
+
+  // Delete the audio file
+  fs.unlink(`${tmpDir}/${title}.mp3`, (err) => {
+    if (err) {
+      console.error(`Failed to delete audio file: ${err}`);
+    } else {
+      console.log(`Deleted audio file: ${tmpDir}/${title}.mp3`);
+    }
+  });
+};
+
+handler.help = ['play'].map((v) => v + ' <query>');
+handler.tags = ['downloader'];
+handler.command = ['mp3', 'songs', 'اغنيه']
+
+handler.exp = 0;
+handler.diamond = false;
+
+export default handler;
